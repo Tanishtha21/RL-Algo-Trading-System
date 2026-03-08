@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RL Trading Agent - TradeTech Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <h1 class="header-title">RL Trading Agent - TradeTech Dashboard</h1>
+                <p class="header-subtitle">Deep Reinforcement Learning for Algorithmic Trading</p>
+            </div>
+            <div class="header-datetime" id="datetime"></div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar Configuration Panel -->
+        <aside class="sidebar">
+            <div class="panel">
+                <h2 class="panel-title">Configuration</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Stock Ticker</label>
+                    <input type="text" id="ticker" class="form-control" value="AAPL" placeholder="e.g., AAPL, TSLA">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Algorithm</label>
+                    <select id="algorithm" class="form-control">
+                        <option value="PPO">PPO - Proximal Policy Optimization</option>
+                        <option value="A2C">A2C - Advantage Actor-Critic</option>
+                        <option value="TD3">TD3 - Twin Delayed DDPG</option>
+                        <option value="SAC">SAC - Soft Actor-Critic</option>
+                        <option value="DDPG">DDPG - Deep Deterministic PG</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Initial Balance ($)</label>
+                    <input type="number" id="initialBalance" class="form-control" value="100000" min="1000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Training Start Date</label>
+                    <input type="date" id="trainStart" class="form-control" value="2024-01-01">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Training End Date</label>
+                    <input type="date" id="trainEnd" class="form-control" value="2024-06-30">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Testing Start Date</label>
+                    <input type="date" id="testStart" class="form-control" value="2024-07-01">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Testing End Date</label>
+                    <input type="date" id="testEnd" class="form-control" value="2024-10-31">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Transaction Cost (%)</label>
+                    <input type="number" id="transactionCost" class="form-control" value="0.1" step="0.01" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Training Timesteps</label>
+                    <input type="number" id="timesteps" class="form-control" value="50000" step="1000" min="1000">
+                </div>
+
+                <button id="trainBtn" class="btn btn--primary btn--full-width">Start Training</button>
+                <button id="backtestBtn" class="btn btn--secondary btn--full-width" disabled>Run Backtest</button>
+            </div>
+
+            <!-- State Space Info -->
+            <div class="panel info-panel">
+                <h3 class="info-title">State Space Components</h3>
+                <ul class="info-list">
+                    <li>Account Balance (normalized)</li>
+                    <li>Number of Shares Held</li>
+                    <li>Current Stock Price</li>
+                    <li>Technical Indicators (MACD, RSI, SMA)</li>
+                    <li>Trading Volume</li>
+                    <li>Historical Price Data</li>
+                </ul>
+                <h3 class="info-title">Action Space</h3>
+                <div class="action-badges">
+                    <span class="badge badge-buy">Buy (2)</span>
+                    <span class="badge badge-hold">Hold (1)</span>
+                    <span class="badge badge-sell">Sell (0)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content">
+            <!-- Algorithm Comparison Table -->
+            <section class="section">
+                <h2 class="section-title">Algorithm Comparison</h2>
+                <div class="table-container">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Algorithm</th>
+                                <th>Full Name</th>
+                                <th>Best For</th>
+                                <th>Sample Efficiency</th>
+                                <th>Stability</th>
+                            </tr>
+                        </thead>
+                        <tbody id="algorithmTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Training Status Section -->
+            <section class="section" id="trainingSection" style="display: none;">
+                <h2 class="section-title">Training Status</h2>
+                <div class="training-status">
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <span class="progress-text" id="progressText">0%</span>
+                    </div>
+                    <p class="status-message" id="statusMessage">Ready to train...</p>
+                    <div class="training-metrics" id="trainingMetrics" style="display: none;">
+                        <div class="metric-item">
+                            <span class="metric-label">Episodes:</span>
+                            <span class="metric-value" id="episodes">0</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Current Reward:</span>
+                            <span class="metric-value" id="currentReward">0.00</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Time Elapsed:</span>
+                            <span class="metric-value" id="timeElapsed">0s</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Metrics Dashboard -->
+            <section class="section" id="metricsSection" style="display: none;">
+                <h2 class="section-title">Performance Metrics</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon">📈</div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="totalReturn">--</div>
+                            <div class="metric-name">Total Return</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">⚡</div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="sharpeRatio">--</div>
+                            <div class="metric-name">Sharpe Ratio</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">📉</div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="maxDrawdown">--</div>
+                            <div class="metric-name">Max Drawdown</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">📊</div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="volatility">--</div>
+                            <div class="metric-name">Volatility</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">💰</div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="finalValue">--</div>
+                            <div class="metric-name">Final Portfolio Value</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">🔄</div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="numTrades">--</div>
+                            <div class="metric-name">Trades Executed</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">🎯</div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="winRate">--</div>
+                            <div class="metric-name">Win Rate</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="section" id="chartsSection" style="display: none;">
+                <h2 class="section-title">Performance Visualization</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <h3 class="chart-title">Portfolio Value Over Time</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="portfolioChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <h3 class="chart-title">Stock Price Movement</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="priceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trade History Table -->
+            <section class="section" id="tradesSection" style="display: none;">
+                <h2 class="section-title">Trade History</h2>
+                <div class="table-container">
+                    <table class="trades-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Action</th>
+                                <th>Shares</th>
+                                <th>Price</th>
+                                <th>Date</th>
+                                <th>Profit/Loss</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradesTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Technical Indicators -->
+            <section class="section" id="indicatorsSection" style="display: none;">
+                <h2 class="section-title">Technical Indicators</h2>
+                <div class="indicators-grid">
+                    <div class="indicator-badge">
+                        <span class="indicator-label">SMA 10</span>
+                        <span class="indicator-value" id="sma10">--</span>
+                    </div>
+                    <div class="indicator-badge">
+                        <span class="indicator-label">SMA 30</span>
+                        <span class="indicator-value" id="sma30">--</span>
+                    </div>
+                    <div class="indicator-badge">
+                        <span class="indicator-label">MACD</span>
+                        <span class="indicator-value" id="macd">--</span>
+                    </div>
+                    <div class="indicator-badge">
+                        <span class="indicator-label">RSI</span>
+                        <span class="indicator-value" id="rsi">--</span>
+                    </div>
+                    <div class="indicator-badge">
+                        <span class="indicator-label">Bollinger Upper</span>
+                        <span class="indicator-value" id="bbUpper">--</span>
+                    </div>
+                    <div class="indicator-badge">
+                        <span class="indicator-label">Bollinger Lower</span>
+                        <span class="indicator-value" id="bbLower">--</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="#" target="_blank">About RL Trading</a>
+                <span>|</span>
+                <a href="#" target="_blank">Documentation</a>
+                <span>|</span>
+                <a href="#" target="_blank">GitHub</a>
+            </div>
+            <p class="footer-disclaimer">⚠️ For educational purposes only. Not financial advice.</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
